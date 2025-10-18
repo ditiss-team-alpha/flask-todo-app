@@ -1,62 +1,119 @@
 pipeline {
     agent any
-    
     environment {
         DOCKER_HUB_REPO = 'adityak404/flask-todo-app'
-        DOCKER_HUB_CREDS = credentials('dockerhub-credentials')
-        BUILD_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_HUB_CREDS = credentials('dockerhub-creds') // <-- Put your Jenkins Docker Hub credentials ID here
+        BUILD_TAG = "jenkins-flask-todo-app-42"
     }
-    
     stages {
         stage('Checkout Code') {
             steps {
                 echo 'Checking out code from GitHub...'
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/Aditya-Karbhari/flask-todo-app',
+                    credentialsId: 'github-ssh' // <-- Your GitHub SSH credential ID
             }
         }
-        
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
-                script {
-                    sh """
-                        docker build -t ${DOCKER_HUB_REPO}:${BUILD_TAG} .
-                        docker tag ${DOCKER_HUB_REPO}:${BUILD_TAG} ${DOCKER_HUB_REPO}:latest
-                    """
-                }
+                // Remove dir('app') if Dockerfile is in repo root
+                sh '''
+                    docker build -t flask-todo-app:jenkins-flask-todo-app-42 .
+                    docker tag flask-todo-app:jenkins-flask-todo-app-42 flask-todo-app:latest
+                '''
             }
         }
-        
+        stage('Run Tests') {
+            steps {
+                echo 'Running application tests...'
+                sh '''
+                    docker run --rm flask-todo-app:jenkins-flask-todo-app-42 python -m pytest tests/
+                '''
+            }
+        }
         stage('Push to Docker Hub') {
             steps {
                 echo 'Pushing image to Docker Hub...'
-                script {
-                    sh """
-                        echo ${DOCKER_HUB_CREDS_PSW} | docker login -u ${DOCKER_HUB_CREDS_USR} --password-stdin
-                        docker push ${DOCKER_HUB_REPO}:${BUILD_TAG}
-                        docker push ${DOCKER_HUB_REPO}:latest
-                    """
-                }
-            }
-        }
-        
-        stage('Clean Up') {
-            steps {
-                echo 'Cleaning up old Docker images...'
-                sh """
-                    docker rmi ${DOCKER_HUB_REPO}:${BUILD_TAG} || true
-                    docker system prune -f
-                """
+                sh '''
+                    echo ${DOCKER_HUB_CREDS_PSW} | docker login -u ${DOCKER_HUB_CREDS_USR} --password-stdin
+                    docker push flask-todo-app:jenkins-flask-todo-app-42
+                    docker push flask-todo-app:latest
+                '''
             }
         }
     }
-    
     post {
         success {
-            echo '✅ Pipeline completed successfully!'
+            echo ':white_tick: Pipeline completed successfully!'
         }
         failure {
-            echo '❌ Pipeline failed!'
+            echo ':x: Pipeline failed!'
+        }
+        always {
+            cleanWs()
         }
     }
 }
+
+
+Pankaj Athe
+  2:15 PM
+pipeline {
+    agent any
+    environment {
+        DOCKER_HUB_REPO = 'adityak404/flask-todo-app'
+        DOCKER_HUB_CREDS = dockerhub-credentials // <-- Put your Jenkins Docker Hub credentials ID here
+        BUILD_TAG = "jenkins-flask-todo-app-42"
+    }
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Checking out code from GitHub...'
+                git branch: 'main',
+                    url: 'https://github.com/ditiss-team-aplha/flask-todo-app.git',
+                    credentialsId: 'github-ssh' // <-- Your GitHub SSH credential ID
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image...'
+                // Remove dir('app') if Dockerfile is in repo root
+                sh '''
+                    docker build -t flask-todo-app:jenkins-flask-todo-app-42 .
+                    docker tag flask-todo-app:jenkins-flask-todo-app-42 flask-todo-app:latest
+                '''
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                echo 'Running application tests...'
+                sh '''
+                    docker run --rm flask-todo-app:jenkins-flask-todo-app-42 python -m pytest tests/
+                '''
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                echo 'Pushing image to Docker Hub...'
+                sh '''
+                    echo ${DOCKER_HUB_CREDS_PSW} | docker login -u ${DOCKER_HUB_CREDS_USR} --password-stdin
+                    docker push flask-todo-app:jenkins-flask-todo-app-42
+                    docker push flask-todo-app:latest
+                '''
+            }
+        }
+    }
+    post {
+        success {
+            echo ':white_tick: Pipeline completed successfully!'
+        }
+        failure {
+            echo ':x: Pipeline failed!'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
+
