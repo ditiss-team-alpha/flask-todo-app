@@ -1,0 +1,58 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag to deploy')
+    }
+
+    environment {
+        DOCKER_HUB_REPO = 'adityak404/flask-todo-app'  // Change this
+        EC2_USER = 'ec2-user'
+        PRODUCTION_HOST = '52.66.196.77'                    // Change this
+    }
+
+    stages {
+        stage('Deploy to Production') {
+            steps {
+                input message: '⚠️ Deploy to Production?', ok: 'Deploy'
+
+                sshagent(['ec2-ssh-key']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${PRODUCTION_HOST} '
+                            docker pull ${DOCKER_HUB_REPO}:${params.IMAGE_TAG}
+                            docker stop flask-app || true
+                            docker rm flask-app || true
+                            docker run -d --name flask-app \
+                                --network app-network \
+                                -e MYSQL_HOST=mysql \
+                                -e MYSQL_USER=flaskuser \
+                                -e MYSQL_PASSWORD=flaskpass \
+                                -e MYSQL_DB=mydb \
+                                -p 5000:5000 \
+                                --restart unless-stopped \
+                                ${DOCKER_HUB_REPO}:${params.IMAGE_TAG}
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                sh """
+                    sleep 15
+                    curl -f http://${PRODUCTION_HOST}:5000/health || exit 1
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Deployment to production successful!"
+        }
+        failure {
+            echo "❌ Deployment to production failed!"
+        }
+    }
+}
