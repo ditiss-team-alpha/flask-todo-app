@@ -1,61 +1,19 @@
-#!/bin/bash
-set -e
-
-# Uninstall old versions (if present)
-sudo apt remove -y docker docker-engine docker.io containerd runc || true
-sudo rm -rf /var/lib/docker /var/lib/containerd || true
-
-# Update system
+sudo apt remove docker docker-engine docker.io containerd runc
+sudo rm -rf /var/lib/docker /var/lib/containerd
 sudo apt update
 sudo apt upgrade -y
-
-# Install prerequisites
-sudo apt install -y apt-transport-https ca-certificates curl gpg lsb-release
-
-# Add Docker's official GPG key and repo
+sudo apt install apt-transport-https ca-certificates curl gpg lsb-release -y
 sudo install -m 0755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
-
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
   https://download.docker.com/linux/debian trixie stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
 sudo apt update
-
-# Install Docker components
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# Enable Docker service
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 sudo systemctl enable docker --now
-
-# Add current user to docker group
-sudo usermod -aG docker "$USER"
-
-echo "--------------------------------------------"
-echo "Docker installation completed!"
-echo "You MUST log out and log back in (or reboot) to use Docker as '$USER' without sudo."
-echo "Test after relogin with: docker run hello-world"
-echo "--------------------------------------------"
-
-
-
-
-///////////////////////////////////////////////////////////////////////////////////////////
-
-
-Usage:
-
-Save the contents above to install-docker.sh
-
-Run:
-
-bash
-chmod +x install-docker.sh
-./install-docker.sh
-Log out and back in for group changes to take effect, then run:
-
-bash
-docker run hello-world
-This script is based on best practices from Debian and Docker official documentation and is fully compatible with Debian 13 (Trixie).
+sudo systemctl status docker
+sudo usermod -aG docker $USER
+docker --version
+sudo docker run hello-world
