@@ -1,0 +1,71 @@
+#!/bin/bash
+set -e
+
+# ===== Configuration =====
+JENKINS_IMAGE="jenkins/jenkins:lts"
+CONTAINER_NAME="jenkins-server"
+JENKINS_PORT=8080
+AGENT_PORT=50000
+VOLUME_NAME="jenkins_home"
+
+# ===== Helper Functions =====
+print_header() {
+  echo "=============================================="
+  echo "$1"
+  echo "=============================================="
+}
+
+# ===== Step 1: Check for Docker =====
+print_header "Checking Docker installation..."
+if ! command -v docker &> /dev/null; then
+  echo "Docker not found. Installing Docker..."
+  curl -fsSL https://get.docker.com -o get-docker.sh
+  sh get-docker.sh
+else
+  echo "Docker is already installed."
+fi
+
+# ===== Step 2: Create persistent Jenkins volume =====
+print_header "Creating persistent Jenkins volume..."
+docker volume create $VOLUME_NAME || true
+
+# ===== Step 3: Stop and remove existing Jenkins container =====
+print_header "Cleaning up old Jenkins container..."
+if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
+  docker stop $CONTAINER_NAME || true
+  docker rm -f $CONTAINER_NAME || true
+fi
+
+# ===== Step 4: Run Jenkins container =====
+print_header "Starting Jenkins container..."
+docker run -d \
+  --name $CONTAINER_NAME \
+  --privileged \
+  -u root \
+  -p $JENKINS_PORT:8080 \
+  -p $AGENT_PORT:50000 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v $(which docker):/usr/bin/docker \
+  -v $VOLUME_NAME:/var/jenkins_home \
+  --restart unless-stopped \
+  $JENKINS_IMAGE
+
+# ===== Step 5: Wait for Jenkins startup =====
+print_header "Waiting for Jenkins to initialize..."
+sleep 20
+echo "Fetching initial admin password..."
+
+docker exec $CONTAINER_NAME cat /var/jenkins_home/secrets/initialAdminPassword || {
+  echo "Could not retrieve password yet. Jenkins might take more time to initialize."
+  echo "Try manually later with:"
+  echo "  docker exec $CONTAINER_NAME cat /var/jenkins_home/secrets/initialAdminPassword"
+}
+
+# ===== Step 6: Display Jenkins URL =====
+print_header "Jenkins is up and running!"
+echo "Access it at: http://$(hostname -I | awk '{print $1}'):$JENKINS_PORT"
+echo "Container Name: $CONTAINER_NAME"
+echo "Persistent Volume: $VOLUME_NAME"
+echo "To stop Jenkins:   docker stop $CONTAINER_NAME"
+echo "To start Jenkins:  docker start $CONTAINER_NAME"
+echo "============================================================"
