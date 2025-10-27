@@ -1,3 +1,5 @@
+
+#Policy change for static hosting in s3 
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -10,3 +12,5 @@
         }
     ]
 }
+
+#in place of resource put you bucket name
