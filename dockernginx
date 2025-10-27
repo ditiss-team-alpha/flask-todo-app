@@ -1,0 +1,40 @@
+#!/bin/bash
+# Script to create and run a static site using Docker and Nginx
+
+# Set variables
+SITE_DIR=~/static-site
+IMAGE_NAME=my-static-site
+CONTAINER_NAME=static-site
+
+# Create project directory
+mkdir -p "$SITE_DIR"
+cd "$SITE_DIR" || exit
+
+# Create index.html
+echo "<h1>Hello from Docker on AWS Debian!</h1>" > index.html
+
+# Create Dockerfile
+cat << 'EOF' > Dockerfile
+# Use an official Nginx image as the base
+FROM nginx:alpine
+
+# Copy your static site files into Nginx's web directory
+COPY . /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Start Nginx automatically
+CMD ["nginx", "-g", "daemon off;"]
+EOF
+
+# Build Docker image
+sudo docker build -t "$IMAGE_NAME" .
+
+# Stop and remove any existing container with the same name
+sudo docker rm -f "$CONTAINER_NAME" 2>/dev/null
+
+# Run Docker container
+sudo docker run -d -p 8080:80 --name "$CONTAINER_NAME" "$IMAGE_NAME"
+
+echo "Static site is running at http://localhost:8080"
