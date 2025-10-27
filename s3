@@ -1,5 +1,5 @@
 
-#Policy change for static hosting in s3 
+#Policy change for static hosting in S3 
 {
     "Version": "2012-10-17",
     "Statement": [
